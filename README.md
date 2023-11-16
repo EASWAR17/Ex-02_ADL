@@ -1,9 +1,9 @@
-# Ex.No:6 Create a simple application to request storage and camera permission at RunTime using android studio.
+# Ex.No:2 Create a simple application client and server service using AIDL interface in android studio.
 
 
 ## AIM:
 
-To develop a simple application for RunTime Permission in Android Studio.
+To create a AIDL interface and communicate the process between client and server using AIDL interface in Android Studio.
 
 ## EQUIPMENTS REQUIRED:
 
@@ -13,7 +13,7 @@ Android Studio(Min.required Artic Fox)
 
 Step 1: Open Android Stdio and then click on File -> New -> New project.
 
-Step 2: Then type the Application name as runtimepermission and click Next. 
+Step 2: Then type the Application name as CSAIDL and click Next. 
 
 Step 3: Then select the Minimum SDK as shown below and click Next.
 
@@ -21,57 +21,69 @@ Step 4: Then select the Empty Activity and click Next. Finally click Finish.
 
 Step 5: Design layout in activity_main.xml.
 
-Step 6: Display process of runtimepermission in android mobile devices.
+Step 6: Display message give in MainActivity file(client/server).
 
 Step 7: Save and run the application.
 
 ## PROGRAM:
-### Activity_Main.xml 
+### Android main
 ```
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
+AIDLServer
+AIDLColorService.java
+package com.example.aidlserver;
+
+import android.app.Service;
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.IBinder;
+import android.os.RemoteException;
+import android.util.Log;
+
+import java.util.Random;
+
+public class AIDLColorService extends Service {
+    private static final String TAG="AIDLColorService";
+    public AIDLColorService() {
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        // TODO: Return the communication channel to the service.
+        return binder;
+    }
+
+    private final IAIDLColorInterface.Stub binder = new IAIDLColorInterface.Stub() {
+        @Override
+        public int getColor() throws RemoteException {
+            Random rnd=new Random();
+            int color= Color.argb(255,rnd.nextInt(256),rnd.nextInt(256),rnd.nextInt(256));
+            Log.d(TAG,"getColor: "+color);
+            return color;
+        }
+    };
+}
 
 
-    <Button
-        android:id="@+id/button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Storage"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.438"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.326" />
+IAIDLColorInterface.aidl
+// IAIDLColorInterface.aidl
+package com.example.aidlserver;
 
-    <Button
-        android:id="@+id/button2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Camera"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.438"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.499" />
-</androidx.constraintlayout.widget.ConstraintLayout>
+// Declare any non-default types here with import statements
 
+interface IAIDLColorInterface {
+    /**
+     * Demonstrates some basic types that you can use as parameters
+     * and return values in AIDL.
+     */
+    int getColor();
+}
 ```
-### Manifest.xml :
+### AndroidManifest.xml
 ```
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.example.runtime">
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.CAMERA" />
+    xmlns:tools="http://schemas.android.com/tools">
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -80,129 +92,135 @@ Step 7: Save and run the application.
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Runtime"
+        android:theme="@style/Theme.AIDLServer"
         tools:targetApi="31">
-        <activity
-            android:name=".MainActivity"
+        < service
+            android:name=".AIDLColorService"
+            android:enabled="true"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="AIDLColorService"/>
             </intent-filter>
-        </activity>
+        </service>
     </application>
 
 </manifest>
-
 ```
-### MainActivity.java :
 
+
+### AIDLClient
 ```
-package com.example.runtime;
+MainActivity.java
 
-import androidx.annotation.NonNull;
+package com.example.aidlserver;
+
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
-import android.content.pm.PackageManager;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.os.RemoteException;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
+
+import com.example.aidlclient.R;
 
 public class MainActivity extends AppCompatActivity {
-    private Button storage, camera;
 
-    // Defining Permission codes.
-    // We can give any value
-    // but unique for each permission.
-    private static final int CAMERA_PERMISSION_CODE = 100;
-    private static final int STORAGE_PERMISSION_CODE = 101;
+    IAIDLColorInterface iADILColorService;
+    private static final String TAG ="MainActivity";
+
+    private ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            iADILColorService = IAIDLColorInterface.Stub.asInterface(iBinder);
+            Log.d(TAG, "Remote config Service Connected!!");
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+
+        }
+    };
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        storage = findViewById(R.id.button);
-        camera = findViewById(R.id.button2);
+        Intent intent = new Intent("AIDLColorService");
+        intent.setPackage("com.example.aidlserver");
 
-        // Set Buttons on Click Listeners
-        storage.setOnClickListener(new View.OnClickListener() {
+        bindService(intent,mConnection, BIND_AUTO_CREATE);
+
+        // Create an onclick listener to button
+        Log.d(TAG, "bindservice called");
+        Button b = findViewById(R.id.button);
+
+        b.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v)
-            {
-                checkPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE, STORAGE_PERMISSION_CODE);
-
+            public void onClick(View view) {
+                try {
+                    int color = iADILColorService.getColor();
+                    view.setBackgroundColor(color);
+                } catch (RemoteException e) {
+                }
             }
         });
 
-        camera.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v)
-            {
-                checkPermission(android.Manifest.permission.CAMERA, CAMERA_PERMISSION_CODE);
-            }
-        });
+
     }
+}
+```
+### activity_main.xml
+```
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.aidlserver.MainActivity">
 
-    // Function to check and request permission.
-    public void checkPermission(String permission, int requestCode)
-    {
-        if (ContextCompat.checkSelfPermission(MainActivity.this, permission) == PackageManager.PERMISSION_DENIED) {
+    <Button
+        android:id="@+id/button"
+        android:layout_width="289dp"
+        android:layout_height="324dp"
+        android:text="Click here to Change Color"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.499" />
+</androidx.constraintlayout.widget.ConstraintLayout>
+	
 
-            // Requesting the permission
-            ActivityCompat.requestPermissions(MainActivity.this, new String[] { permission }, requestCode);
-        }
-        else {
-            Toast.makeText(MainActivity.this, "Permission already granted", Toast.LENGTH_SHORT).show();
-        }
-    }
+IAIDLColorInterface.aidl
+// IAIDLColorInterface.aidl
+package com.example.aidlserver;
 
-    // This function is called when the user accepts or decline the permission.
-    // Request Code is used to check which permission called this function.
-    // This request code is provided when the user is prompt for permission.
+// Declare any non-default types here with import statements
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions,
-                                           @NonNull int[] grantResults)
-    {
-        super.onRequestPermissionsResult(requestCode,
-                permissions,
-                grantResults);
-
-        if (requestCode == CAMERA_PERMISSION_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(MainActivity.this, "Camera Permission Granted", Toast.LENGTH_SHORT) .show();
-            }
-            else {
-                Toast.makeText(MainActivity.this, "Camera Permission Denied", Toast.LENGTH_SHORT) .show();
-            }
-        }
-        else if (requestCode == STORAGE_PERMISSION_CODE) {
-            if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(MainActivity.this, "Storage Permission Granted", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(MainActivity.this, "Storage Permission Denied", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
+interface IAIDLColorInterface {
+    /**
+     * Demonstrates some basic types that you can use as parameters
+     * and return values in AIDL.
+     */
+    int getColor();
 }
 
 ```
-## OUTPUT 
 
-![image](https://github.com/vishnudorigundla/Ex-No_06/assets/94175324/caad9f96-7657-4304-8eaa-7e78c228b8fb)
+### OUTPUT
+![image](https://github.com/Jeswanth21001768/Ex-02_ADL/assets/94155480/bc2a11de-bbef-4c1f-8d40-fc847df916fc)
 
-![image](https://github.com/vishnudorigundla/Ex-No_06/assets/94175324/37a9c598-5570-48a6-b553-3e2d8220ae98)
+![image](https://github.com/Jeswanth21001768/Ex-02_ADL/assets/94155480/f5b3da17-2f38-4509-8b10-e77c8b9794ff)
 
-![image](https://github.com/vishnudorigundla/Ex-No_06/assets/94175324/8960bd0c-3ef7-4248-9d48-c553cfbbcf75)
 
 
 ## RESULT
-Thus a Simple Android Application to request storage and camera permission at RunTime in Android Studio is developed and executed successfully.
+Thus a Simple Android Application to create a AIDL interface and communicate the process between client and server using AIDL interface in Android Studio is developed and executed successfully.
